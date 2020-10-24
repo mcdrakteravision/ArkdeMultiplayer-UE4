@@ -52,6 +52,8 @@ AArkdeCMCharacter::AArkdeCMCharacter()
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("Ability System Component"));
+	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Full);
 
 	AttributeSet = CreateDefaultSubobject<UACM_AttributeSet>(TEXT("Attribute Set"));
 }
@@ -61,7 +63,7 @@ void AArkdeCMCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (IsValid(AbilitySystemComponent))
+	if (GetLocalRole() == ENetRole::ROLE_Authority && IsValid(AbilitySystemComponent))
 	{
 		for (TSubclassOf<UACM_GameplayAbility>& currentAbility : StartingAbilities)
 		{
