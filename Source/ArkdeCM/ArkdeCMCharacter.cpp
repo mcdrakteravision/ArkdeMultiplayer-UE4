@@ -12,6 +12,7 @@
 #include "ACM_AttributeSet.h"
 #include "ACM_GameplayAbility.h"
 #include "ArkdeCM/ArkdeCM.h"
+#include "ArkdeCM/Public/ACM_PlayerState.h"
 
 //===============================================================================================================
 //////////////////////////////////////////////////////////////////////////
@@ -51,32 +52,15 @@ AArkdeCMCharacter::AArkdeCMCharacter()
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 
-	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("Ability System Component"));
-	AbilitySystemComponent->SetIsReplicated(true);
-	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Full);
-
-	AttributeSet = CreateDefaultSubobject<UACM_AttributeSet>(TEXT("Attribute Set"));
+	IsInputBound = false;
+	AbilitiesGiven = false;
+	EffectsGiven = false;
 }
 
 //===============================================================================================================
 void AArkdeCMCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (GetLocalRole() == ENetRole::ROLE_Authority && IsValid(AbilitySystemComponent))
-	{
-		for (TSubclassOf<UACM_GameplayAbility>& currentAbility : StartingAbilities)
-		{
-			if (IsValid(currentAbility))
-			{
-				UACM_GameplayAbility* defaultObj = currentAbility->GetDefaultObject<UACM_GameplayAbility>();
-				FGameplayAbilitySpec abilitySpec(defaultObj, 1, static_cast<int32>(defaultObj->AbilityInputID), this);
-				AbilitySystemComponent->GiveAbility(abilitySpec);
-			}
-		}
-
-		AbilitySystemComponent->InitAbilityActorInfo(this, this);
-	}
 }
 
 //===============================================================================================================
@@ -84,9 +68,15 @@ void AArkdeCMCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
-	if (IsValid(AbilitySystemComponent))
+	AACM_PlayerState* playerState = GetPlayerState<AACM_PlayerState>();
+	if (IsValid(playerState))
 	{
-		AbilitySystemComponent->RefreshAbilityActorInfo();
+		AbilitySystemComponent = playerState->GetAbilitySystemComponent();
+		playerState->GetAbilitySystemComponent()->InitAbilityActorInfo(playerState, this);
+		AttributeSet = playerState->GetAttributeSet();
+
+		SetupAbilities();
+		SetupEffects();
 	}
 }
 
@@ -98,6 +88,8 @@ void AArkdeCMCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerI
 {
 	// Set up gameplay key bindings
 	check(PlayerInputComponent);
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
@@ -112,30 +104,103 @@ void AArkdeCMCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerI
 	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
 	PlayerInputComponent->BindAxis("LookUpRate", this, &AArkdeCMCharacter::LookUpAtRate);
 
-	// handle touch devices
-	PlayerInputComponent->BindTouch(IE_Pressed, this, &AArkdeCMCharacter::TouchStarted);
-	PlayerInputComponent->BindTouch(IE_Released, this, &AArkdeCMCharacter::TouchStopped);
-
-	// VR headset functionality
-	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &AArkdeCMCharacter::OnResetVR);
-
 	// Setup ASC Inpout bindings
-	AbilitySystemComponent->BindAbilityActivationToInputComponent(
-		PlayerInputComponent,
-		FGameplayAbilityInputBinds(
-			"Confirm",
-			"Cancel",
-			"EACM_AbilityInputID",
-			static_cast<int32>(EACM_AbilityInputID::Confirm),
-			static_cast<int32>(EACM_AbilityInputID::Cancel)
-		)
-	);
+	SetupGasInputs();
 }
 
 //===============================================================================================================
 UAbilitySystemComponent* AArkdeCMCharacter::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
+}
+
+//===============================================================================================================
+void AArkdeCMCharacter::SetupGasInputs()
+{
+	if (!IsInputBound && IsValid(AbilitySystemComponent) && IsValid(InputComponent))
+	{
+		AbilitySystemComponent->BindAbilityActivationToInputComponent(
+			InputComponent,
+			FGameplayAbilityInputBinds(
+				"Confirm",
+				"Cancel",
+				"EACM_AbilityInputID",
+				static_cast<int32>(EACM_AbilityInputID::Confirm),
+				static_cast<int32>(EACM_AbilityInputID::Cancel)
+			)
+		);
+
+		IsInputBound = true;
+	}
+}
+
+//===============================================================================================================
+void AArkdeCMCharacter::SetupAbilities()
+{
+	if (GetLocalRole() != ROLE_Authority || !IsValid(AbilitySystemComponent) || AbilitiesGiven)
+	{
+		return;
+	}
+
+	for (TSubclassOf<UACM_GameplayAbility>& currentAbility : StartingAbilities)
+	{
+		if (IsValid(currentAbility))
+		{
+			UACM_GameplayAbility* defaultObj = currentAbility->GetDefaultObject<UACM_GameplayAbility>();
+			FGameplayAbilitySpec abilitySpec(defaultObj, 1, static_cast<int32>(defaultObj->AbilityInputID), this);
+			AbilitySystemComponent->GiveAbility(abilitySpec);
+		}
+	}
+
+	AbilitiesGiven = true;
+}
+
+//===============================================================================================================
+void AArkdeCMCharacter::SetupEffects()
+{
+	if (GetLocalRole() != ROLE_Authority || !IsValid(AbilitySystemComponent) || EffectsGiven)
+	{
+		return;
+	}
+
+	FGameplayEffectContextHandle effectContext = AbilitySystemComponent->MakeEffectContext();
+	effectContext.AddSourceObject(this);
+
+	for (TSubclassOf<UGameplayEffect>& currentEffect : StartingEffects)
+	{
+		if (IsValid(currentEffect))
+		{
+			FGameplayEffectSpecHandle newHandle = AbilitySystemComponent->MakeOutgoingSpec(currentEffect, 1.f, effectContext);
+			if (newHandle.IsValid())
+			{
+				FActiveGameplayEffectHandle activeGEHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToTarget(*newHandle.Data.Get(), GetAbilitySystemComponent());
+			}
+		}
+	}
+
+	EffectsGiven = true;
+}
+
+//===============================================================================================================
+void AArkdeCMCharacter::Die()
+{
+
+}
+
+//===============================================================================================================
+void AArkdeCMCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	AACM_PlayerState* playerState = GetPlayerState<AACM_PlayerState>();
+	if (IsValid(playerState))
+	{
+		AbilitySystemComponent = playerState->GetAbilitySystemComponent();
+		playerState->GetAbilitySystemComponent()->InitAbilityActorInfo(playerState, this);
+		AttributeSet = playerState->GetAttributeSet();
+
+		SetupGasInputs();
+	}
 }
 
 //===============================================================================================================

@@ -9,6 +9,7 @@
 class UProjectileMovementComponent;
 class USphereComponent;
 class UParticleSystemComponent;
+class AArkdeCMCharacter;
 
 UCLASS()
 class ARKDECM_API AACM_Projectile : public AActor
@@ -27,6 +28,12 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UParticleSystemComponent* ParticleSystemComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	float Range;
+
+	UFUNCTION(NetMulticast, WithValidation, Reliable)
+	void Multicast_IgnoreActor(AArkdeCMCharacter* ActorToIgnore);
 
 protected:
 	// Called when the game starts or when spawned

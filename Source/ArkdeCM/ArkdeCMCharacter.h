@@ -10,6 +10,7 @@
 class UAbilitySystemComponent;
 class UACM_AttributeSet;
 class UACM_GameplayAbility;
+class UGameplayEffect;
 
 UCLASS(config=Game)
 class AArkdeCMCharacter : public ACharacter, public IAbilitySystemInterface
@@ -78,6 +79,8 @@ public:
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
+	bool IsInputBound;
+
 	/* --- Gameplay Ability System Start --- */
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gameplay Ability System")
@@ -92,6 +95,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay Ability System")
 	TArray<TSubclassOf<UACM_GameplayAbility>> StartingAbilities;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay Ability System")
+	TArray<TSubclassOf<UGameplayEffect>> StartingEffects;
+
+	void SetupGasInputs();
+
+	void SetupAbilities();
+
+	void SetupEffects();
+
+	bool AbilitiesGiven;
+
+	bool EffectsGiven;
+
 	/* --- Gameplay Ability System End --- */
+
+	virtual void Die();
+
+	virtual void OnRep_PlayerState() override;
 };
 
