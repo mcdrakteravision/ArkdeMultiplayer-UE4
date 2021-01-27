@@ -110,7 +110,19 @@ public:
 
 	/* --- Gameplay Ability System End --- */
 
-	virtual void Die();
+	bool IsDying;
+
+	UPROPERTY(EditDefaultsOnly)
+	UAnimMontage* DeathMontage;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UGameplayEffect> DeathEffectClass;
+
+	UFUNCTION(Server, Reliable)
+	virtual void Server_Die(AArkdeCMCharacter* Killer);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_OnDeath();
 
 	virtual void OnRep_PlayerState() override;
 };

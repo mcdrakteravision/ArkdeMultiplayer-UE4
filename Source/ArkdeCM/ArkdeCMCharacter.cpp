@@ -12,7 +12,9 @@
 #include "ACM_AttributeSet.h"
 #include "ACM_GameplayAbility.h"
 #include "ArkdeCM/ArkdeCM.h"
+#include "ACM_PlayerController.h"
 #include "ArkdeCM/Public/ACM_PlayerState.h"
+#include "ArkdeCM/ArkdeCMGameMode.h"
 
 //===============================================================================================================
 //////////////////////////////////////////////////////////////////////////
@@ -55,6 +57,7 @@ AArkdeCMCharacter::AArkdeCMCharacter()
 	IsInputBound = false;
 	AbilitiesGiven = false;
 	EffectsGiven = false;
+	IsDying = false;
 }
 
 //===============================================================================================================
@@ -182,9 +185,44 @@ void AArkdeCMCharacter::SetupEffects()
 }
 
 //===============================================================================================================
-void AArkdeCMCharacter::Die()
+void AArkdeCMCharacter::Server_Die_Implementation(AArkdeCMCharacter* Killer)
 {
+	if (IsDying)
+	{
+		return;
+	}
 
+	IsDying = true;
+
+	if (IsValid(DeathEffectClass))
+	{
+		FGameplayEffectContextHandle EffectContext;
+		AbilitySystemComponent->ApplyGameplayEffectToSelf(DeathEffectClass->GetDefaultObject<UGameplayEffect>(), 1.f, EffectContext);
+	}
+
+	AACM_PlayerState* KillerPlayerState = Cast<AACM_PlayerState>(Killer->GetPlayerState());
+	if (IsValid(KillerPlayerState))
+	{
+		KillerPlayerState->ScoreKill();
+	}
+
+	AArkdeCMGameMode* WorldGameMode = Cast<AArkdeCMGameMode>(GetWorld()->GetAuthGameMode());
+	WorldGameMode->PlayerKilled(GetController());
+
+	Multicast_OnDeath();
+}
+
+//===============================================================================================================
+void AArkdeCMCharacter::Multicast_OnDeath_Implementation()
+{
+	if (DeathMontage)
+	{
+		PlayAnimMontage(DeathMontage);
+	}
+	else
+	{
+		Destroy();
+	}
 }
 
 //===============================================================================================================

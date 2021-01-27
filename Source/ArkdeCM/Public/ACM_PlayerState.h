@@ -45,4 +45,14 @@ public:
 	FDelegateHandle HealthChangedDelegateHandle;
 
 	virtual void OnHealthChanged(const FOnAttributeChangeData& Data);
+
+	/* --- Win Condition Start --- */
+
+	FGameplayTag DeadTag;
+
+	int KillCount;
+
+	void ScoreKill();
+
+	/* --- Win Condition End --- */
 };

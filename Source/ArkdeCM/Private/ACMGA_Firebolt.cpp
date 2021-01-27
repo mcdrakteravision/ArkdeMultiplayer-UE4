@@ -28,8 +28,6 @@ void UACMGA_Firebolt::ActivateAbility(const FGameplayAbilitySpecHandle Handle, c
 		1.f
 	);
 
-	UE_LOG(LogTemp, Warning, TEXT("UACMGA_FireBolt::ActivateAbility: LOCAL ROLE - %s"), *(UEnum::GetValueAsString<ENetRole>(GetOwningActorFromActorInfo()->GetLocalRole())));
-
 	montageTask->OnBlendOut.AddDynamic(this, &UACMGA_Firebolt::OnMontageCompleted);
 	montageTask->OnComplete.AddDynamic(this, &UACMGA_Firebolt::OnMontageCompleted);
 	montageTask->OnInterrupted.AddDynamic(this, &UACMGA_Firebolt::OnMontageCancelled);
@@ -54,7 +52,6 @@ void UACMGA_Firebolt::OnMontageCompleted(FGameplayTag EventTag, FGameplayEventDa
 //===============================================================================================================
 void UACMGA_Firebolt::EventReceived(FGameplayTag EventTag, FGameplayEventData EventData)
 {
-	UE_LOG(LogTemp, Warning, TEXT("UACMGA_FireBolt::EventReceived: LOCAL ROLE - %s"), *(UEnum::GetValueAsString<ENetRole>(GetOwningActorFromActorInfo()->GetLocalRole())));
 	if (GetOwningActorFromActorInfo()->GetLocalRole() == ROLE_Authority && EventTag == ProjectileSpawnTag)
 	{
 		AArkdeCMCharacter* character = Cast<AArkdeCMCharacter>(GetAvatarActorFromActorInfo());

@@ -13,6 +13,8 @@ class AArkdeCMGameMode : public AGameModeBase
 
 public:
 	AArkdeCMGameMode();
+
+	void PlayerKilled(AController* VictimController);
 };
 
 
