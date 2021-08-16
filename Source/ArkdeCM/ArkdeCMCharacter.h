@@ -12,6 +12,8 @@ class UACM_AttributeSet;
 class UACM_GameplayAbility;
 class UGameplayEffect;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnResourceCharacterChanged, float, PercentValue);
+
 UCLASS(config=Game)
 class AArkdeCMCharacter : public ACharacter, public IAbilitySystemInterface
 {
@@ -40,6 +42,24 @@ public:
 	float BaseLookUpRate;
 
 protected:
+
+	UPROPERTY(BlueprintAssignable)
+	FOnResourceCharacterChanged OnCharacterHealthDelegate;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnResourceCharacterChanged OnCharacterManaDelegate;
+
+	UFUNCTION()
+	void OnCharacterHealthChanged(float Health, float MaxHealth);
+
+	UFUNCTION(Client, Reliable)
+	void Client_HealthChanged(float Health, float MaxHealth);
+
+	UFUNCTION()
+	void OnCharacterManaChanged(float Mana, float MaxMana);
+
+	UFUNCTION(Client, Reliable)
+	void Client_ManaChanged(float Mana, float MaxMana);
 
 	/** Resets HMD orientation in VR. */
 	void OnResetVR();

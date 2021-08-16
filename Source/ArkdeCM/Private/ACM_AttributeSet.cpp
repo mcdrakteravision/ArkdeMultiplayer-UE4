@@ -50,6 +50,7 @@ void UACM_AttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectMo
 	{
 		Health.SetCurrentValue(FMath::Clamp(Health.GetCurrentValue(), 0.f, MaxHealth.GetCurrentValue()));
 		Health.SetBaseValue(FMath::Clamp(Health.GetBaseValue(), 0.f, MaxHealth.GetCurrentValue()));
+		OnHealthChangedDelegate.Broadcast(Health.GetCurrentValue(), MaxHealth.GetCurrentValue());
 		//UE_LOG(LogTemp, Warning, TEXT("Health changed: %f"), Health.GetCurrentValue());
 	}
 	else if (Data.EvaluatedData.Attribute.GetUProperty() ==
@@ -57,6 +58,7 @@ void UACM_AttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectMo
 	{
 		Mana.SetCurrentValue(FMath::Clamp(Mana.GetCurrentValue(), 0.f, MaxMana.GetCurrentValue()));
 		Mana.SetBaseValue(FMath::Clamp(Mana.GetBaseValue(), 0.f, MaxMana.GetCurrentValue()));
+		OnManaChangedDelegate.Broadcast(Mana.GetCurrentValue(), MaxMana.GetCurrentValue());
 		//UE_LOG(LogTemp, Warning, TEXT("Mana changed: %f"), Mana.GetCurrentValue());
 	}
 	else if (Data.EvaluatedData.Attribute.GetUProperty() ==
